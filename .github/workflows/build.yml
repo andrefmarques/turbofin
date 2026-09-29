@@ -38,27 +38,6 @@ jobs:
       - name: Maximize build space
         uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
 
-      # Rechunking writes a second full copy of the image plus an intermediate
-      # ostree repo, which does not fit on the runner's root disk at this image
-      # size. /mnt is a separate, larger ephemeral disk. The ostree-rechunk
-      # recipe reads the graphroot back out of `podman info`, so pointing podman
-      # here moves both the build and the rechunk output off /.
-      - name: Move podman storage to /mnt
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo mkdir -p /mnt/podman /mnt/podman-run
-          sudo chown -R "$(id -u):$(id -g)" /mnt/podman /mnt/podman-run
-          mkdir -p ~/.config/containers
-          cat > ~/.config/containers/storage.conf <<'EOF'
-          [storage]
-          driver = "overlay"
-          graphroot = "/mnt/podman"
-          runroot = "/mnt/podman-run"
-          EOF
-          echo "graphroot is now: $(podman info --format '{{.Store.GraphRoot}}')"
-          df -h / /mnt
-
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 #v4.0.0
 
@@ -95,15 +74,22 @@ jobs:
             ${IMAGE_NAME} \
             ${DEFAULT_TAG}
 
-      # This is optional, this provides smaller delta updates
-      - name: Rechunk with rpm-ostree
-        id: rechunk
-        run: |
-          df -h / /mnt
-          just ostree-rechunk \
-            ${IMAGE_NAME} \
-            ${DEFAULT_TAG}
-          df -h / /mnt
+      # Disabled: rechunking splits the image into 127 package-aligned layers,
+      # which gives smaller update deltas. It writes a full second copy of the
+      # image plus an intermediate ostree repo, and at ~13.6 GB that does not
+      # fit in the ~32 GB a hosted runner has left after the build. Note that
+      # /mnt is NOT a separate disk on GitHub runners; it shares /dev/root, so
+      # relocating podman's graphroot there does not help.
+      #
+      # To revisit: reclaim /var/lib/docker and the hosted toolcache first, or
+      # run `just ostree-rechunk` on a machine with more disk.
+      #
+      # - name: Rechunk with rpm-ostree
+      #   id: rechunk
+      #   run: |
+      #     just ostree-rechunk \
+      #       ${IMAGE_NAME} \
+      #       ${DEFAULT_TAG}
 
       # If you are feeling adventurous, use the new distro agnostic rechunker
       # https://github.com/coreos/chunkah
