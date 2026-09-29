@@ -66,40 +66,65 @@ jobs:
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
 
+      # The rechunk action mounts the image with rootful podman, so the build
+      # has to produce it in root's storage rather than the runner user's.
+      # Running just under sudo makes git refuse the checkout as
+      # dubious-ownership, which the build recipe reads for its labels.
+      - name: Allow root to read the checkout
+        run: sudo git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
       # This actually builds the container image
       - name: Build Image
         id: build-image
         run: |
-          just build \
+          sudo -E $(command -v just) build \
             ${IMAGE_NAME} \
             ${DEFAULT_TAG}
 
-      # Disabled: rechunking splits the image into 127 package-aligned layers,
-      # which gives smaller update deltas. It writes a full second copy of the
-      # image plus an intermediate ostree repo, and at ~13.6 GB that does not
-      # fit in the ~32 GB a hosted runner has left after the build. Note that
-      # /mnt is NOT a separate disk on GitHub runners; it shares /dev/root, so
-      # relocating podman's graphroot there does not help.
-      #
-      # To revisit: reclaim /var/lib/docker and the hosted toolcache first, or
-      # run `just ostree-rechunk` on a machine with more disk.
-      #
-      # - name: Rechunk with rpm-ostree
-      #   id: rechunk
-      #   run: |
-      #     just ostree-rechunk \
-      #       ${IMAGE_NAME} \
-      #       ${DEFAULT_TAG}
+      # The rechunked image is rebuilt from an ostree commit, so it does not
+      # inherit the labels the build applied. containers.bootc and ostree.linux
+      # in particular have to survive or the result is not a usable bootc image.
+      - name: Collect labels for rechunk
+        id: labels
+        run: |
+          set -euo pipefail
+          OSTREE_LINUX=$(sudo podman inspect "${IMAGE_NAME}:${DEFAULT_TAG}" \
+            | jq -r '.[].Config.Labels["ostree.linux"]')
+          {
+            echo 'labels<<LABELS_EOF'
+            echo "containers.bootc=1"
+            echo "ostree.linux=${OSTREE_LINUX}"
+            echo "org.opencontainers.image.title=${IMAGE_NAME}"
+            echo "org.opencontainers.image.license=Apache-2.0"
+            echo "org.opencontainers.image.vendor=${GITHUB_REPOSITORY_OWNER}"
+            echo "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}"
+            echo "org.opencontainers.image.url=https://github.com/${GITHUB_REPOSITORY}"
+            echo 'LABELS_EOF'
+          } >> "${GITHUB_OUTPUT}"
 
-      # If you are feeling adventurous, use the new distro agnostic rechunker
-      # https://github.com/coreos/chunkah
-      # You can delete the Rechunk with rpm-ostree portion then if you use this
-      #- name: Rechunk with Chunkah
-      #  id: rechunk
-      #  run: |
-      #    just rechunk \
-      #      ${IMAGE_NAME} \
-      #      ${DEFAULT_TAG}
+      # Splits the image into package-aligned layers so updates download less.
+      # This action commits the image to an ostree repo and deletes the source
+      # before writing the output, so only one full copy is resident at a time.
+      # rpm-ostree's own `compose build-chunked-oci` keeps the source mounted
+      # while writing a second copy, which does not fit on a hosted runner at
+      # this image size -- that is why the template's ostree-rechunk is unused.
+      - name: Rechunk image
+        id: rechunk
+        uses: hhd-dev/rechunk@5fbe1d3a639615d2548d83bc888360de6267b1a2 # v1.2.4
+        with:
+          ref: localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
+          prev-ref: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
+          max-layers: '127'
+          labels: ${{ steps.labels.outputs.labels }}
+
+      # The action leaves an OCI directory rather than an image in storage.
+      - name: Load rechunked image
+        run: |
+          set -euox pipefail
+          IMAGE=$(sudo podman pull "${{ steps.rechunk.outputs.ref }}")
+          sudo podman tag "${IMAGE}" "${IMAGE_NAME}:${DEFAULT_TAG}"
+          sudo rm -rf "${{ steps.rechunk.outputs.location }}"
+          df -h /
 
       - name: Generate Build Tags
         id: gen-build-tags
@@ -117,20 +142,23 @@ jobs:
         env:
           ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
         run: |
-          just tag-images \
+          sudo -E $(command -v just) tag-images \
             "${IMAGE_NAME}" \
             "${DEFAULT_TAG}" \
             "${ALIAS_TAGS}"
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
+      # The rechunked image lives in root's container storage, so the push runs
+      # under sudo and needs the credentials in root's auth file rather than the
+      # runner user's -- which is what docker/login-action would have written.
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${GH_TOKEN}" | sudo podman login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
 
       - name: Push To GHCR
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
@@ -140,7 +168,7 @@ jobs:
         run: |
           set -euox pipefail
           for tag in ${ALIAS_TAGS}; do
-            podman push --digestfile=/tmp/digestfile ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
+            sudo podman push --digestfile=/tmp/digestfile ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
           done
 
           digest=$(< /tmp/digestfile)
