@@ -1,0 +1,31 @@
+---
+name: Cleanup old images
+on:
+  schedule:
+    - cron: '15 0 * * 0'  # 0015 UTC on Sundays
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+
+jobs:
+  # The build publishes six tags per run and runs daily, so versions accumulate
+  # quickly. Untagged versions are left behind whenever a tag moves to a newer
+  # build, and orphaned ones whenever a push is interrupted.
+  delete-old-images:
+    name: Delete old images
+    runs-on: ubuntu-26.04
+
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete images older than 30 days
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          packages: turbofin
+          older-than: 30 days
+          delete-orphaned-images: true
+          keep-n-tagged: 10
+          keep-n-untagged: 10

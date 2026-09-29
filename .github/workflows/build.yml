@@ -175,20 +175,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Retried because GHCR intermittently fails part way through a multi-GB
+      # push, and a failure here throws away the whole build.
       - name: Push To GHCR
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         id: push-image
-        env:
-          ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
-        run: |
-          set -euox pipefail
-          for tag in ${ALIAS_TAGS}; do
-            sudo podman push --digestfile=/tmp/digestfile ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
-          done
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+        with:
+          max_attempts: 3
+          retry_wait_seconds: 15
+          timeout_minutes: 30
+          command: |
+            set -euox pipefail
+            for tag in ${{ steps.gen-build-tags.outputs.alias_tags }}; do
+              dest="${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}"
+              sudo podman push --digestfile=/tmp/digestfile "${IMAGE_NAME}:${tag}" "${dest}"
+              # Pushed twice on purpose: the first push can report a digest that
+              # differs from what the tag ends up resolving to, which would leave
+              # the signing step signing a manifest nothing points at.
+              # https://github.com/containers/podman/issues/27796
+              sudo podman push --digestfile=/tmp/digestfile "${IMAGE_NAME}:${tag}" "${dest}"
+            done
 
-          digest=$(< /tmp/digestfile)
+            digest=$(< /tmp/digestfile)
 
-          echo "digest=${digest}" >> $GITHUB_OUTPUT
+            echo "digest=${digest}" >> $GITHUB_OUTPUT
 
       # This section is optional and only needs to be enabled if you plan on distributing
       # your project for others to consume. You will need to create a public and private key
