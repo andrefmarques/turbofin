@@ -1,0 +1,3 @@
+docker:
+  ghcr.io/andrefmarques/turbofin:
+    use-sigstore-attachments: true

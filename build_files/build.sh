@@ -46,10 +46,24 @@ dnf5 -y copr disable scottames/ghostty
 dnf5 -y copr enable avengemedia/dms
 dnf5 -y copr enable avengemedia/danklinux
 dnf5 install -y \
-    dms \
-    quickshell-git
+    dms
 dnf5 -y copr disable avengemedia/dms
 dnf5 -y copr disable avengemedia/danklinux
+
+### Signature policy
+# The base image only trusts ghcr.io/ublue-os, so `bootc switch
+# --enforce-container-sigpolicy` onto this image would be rejected without an
+# entry of its own. policy.json is a single file rather than a drop-in
+# directory, so the entry is merged in here instead of shipped in system_files.
+# The key itself and the registries.d drop-in do come from system_files.
+
+POLICY=/etc/containers/policy.json
+jq '.transports.docker["ghcr.io/andrefmarques/turbofin"] = [{
+      "type": "sigstoreSigned",
+      "keyPath": "/usr/lib/pki/containers/turbofin.pub",
+      "signedIdentity": { "type": "matchRepository" }
+    }]' "${POLICY}" > "${POLICY}.new"
+mv "${POLICY}.new" "${POLICY}"
 
 # Nerd Fonts are installed on the source machine from che/nerd-fonts but were not
 # part of the layered set. Uncomment to bake them in as well.

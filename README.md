@@ -43,6 +43,23 @@ cosign generate-key-pair
 Leave the password empty. Commit `cosign.pub`, and add the contents of `cosign.key` as the
 repository secret `SIGNING_SECRET`. Do not commit `cosign.key` — it is in `.gitignore`.
 
+The image trusts its own signature: the same key ships at
+[`system_files/usr/lib/pki/containers/turbofin.pub`](system_files/usr/lib/pki/containers/turbofin.pub),
+[`build_files/build.sh`](build_files/build.sh) merges a matching `sigstoreSigned` entry into
+`/etc/containers/policy.json`, and
+[`system_files/etc/containers/registries.d/turbofin.yaml`](system_files/etc/containers/registries.d/turbofin.yaml)
+points the registry at its sigstore attachments. Without those three,
+`--enforce-container-sigpolicy` rejects the image, since the base only trusts `ghcr.io/ublue-os`.
+
+Replacing the key means updating `cosign.pub`, `SIGNING_SECRET` and the copy under
+`system_files/`, then rebasing once unsigned so the new policy lands before it is enforced.
+
+Verify a published image against the key with:
+
+```sh
+cosign verify --key cosign.pub ghcr.io/andrefmarques/turbofin:latest
+```
+
 ## Building
 
 Locally:
