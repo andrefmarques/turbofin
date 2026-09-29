@@ -64,10 +64,3 @@ jq '.transports.docker["ghcr.io/andrefmarques/turbofin"] = [{
       "signedIdentity": { "type": "matchRepository" }
     }]' "${POLICY}" > "${POLICY}.new"
 mv "${POLICY}.new" "${POLICY}"
-
-# Nerd Fonts are installed on the source machine from che/nerd-fonts but were not
-# part of the layered set. Uncomment to bake them in as well.
-#
-# dnf5 -y copr enable che/nerd-fonts
-# dnf5 install -y nerd-fonts
-# dnf5 -y copr disable che/nerd-fonts
