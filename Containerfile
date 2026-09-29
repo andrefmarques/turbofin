@@ -5,8 +5,11 @@ COPY system_files /system_files
 
 # Base Image
 # bluefin-dx `latest` is the rolling Fedora 44 stream this machine already tracks.
-# The digest is pinned so builds are reproducible; Renovate bumps it on upstream releases.
-FROM ghcr.io/ublue-os/bluefin-dx:latest@sha256:df4f9c85c34f373b72d81227d83777bf141fbc39d9ae438e72fd406bccdac31a
+# Left as a floating tag: the build runs --pull=newer, so the daily scheduled
+# rebuild picks up each upstream release on its own. A pinned digest would need
+# something watching it to be worth the reproducibility, and an upstream
+# regression is one `bootc rollback` away.
+FROM ghcr.io/ublue-os/bluefin-dx:latest
 ## Other possible base images include:
 # FROM ghcr.io/ublue-os/bluefin-dx:stable
 # FROM ghcr.io/ublue-os/bluefin-dx-nvidia-open:latest

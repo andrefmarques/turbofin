@@ -16,10 +16,10 @@ Everything in `bluefin-dx:latest`, plus:
 | `dejavu-sans-fonts`, `google-noto-sans-fonts`, `liberation-fonts` | Fedora |
 | `google-cloud-cli`, `google-cloud-cli-gke-gcloud-auth-plugin`, `google-cloud-cli-package-go-module` | [Google Cloud SDK](https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-x86_64) |
 | `ghostty` | COPR [`scottames/ghostty`](https://copr.fedorainfracloud.org/coprs/scottames/ghostty/) |
-| `dms`, `quickshell-git` | COPR [`avengemedia/dms`](https://copr.fedorainfracloud.org/coprs/avengemedia/dms/) + [`avengemedia/danklinux`](https://copr.fedorainfracloud.org/coprs/avengemedia/danklinux/) |
+| `dms`, and the `quickshell` it pulls in | COPR [`avengemedia/dms`](https://copr.fedorainfracloud.org/coprs/avengemedia/dms/) + [`avengemedia/danklinux`](https://copr.fedorainfracloud.org/coprs/avengemedia/danklinux/) |
 
 Package selection lives in [`build_files/build.sh`](build_files/build.sh); the base image
-and its pinned digest live in the [`Containerfile`](Containerfile).
+lives in the [`Containerfile`](Containerfile).
 
 The COPRs are disabled again after installation so they do not ship enabled in the final
 image. The Google Cloud SDK repo is shipped enabled, via
@@ -74,7 +74,8 @@ In CI: [`.github/workflows/build.yml`](.github/workflows/build.yml) builds on ev
 `main`, on pull requests, and daily at 10:05 UTC so the image follows upstream bluefin-dx.
 Pull request builds do not push or sign.
 
-Renovate keeps the pinned base image digest and the pinned Action versions current.
+The base image is a floating tag, so each scheduled rebuild picks up the current
+bluefin-dx. Dependabot raises weekly pull requests for the pinned Action versions.
 
 ## Rebasing onto it
 
