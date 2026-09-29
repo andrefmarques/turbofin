@@ -88,8 +88,13 @@ jobs:
         id: labels
         run: |
           set -euo pipefail
-          OSTREE_LINUX=$(sudo podman inspect "${IMAGE_NAME}:${DEFAULT_TAG}" \
-            | jq -r '.[].Config.Labels["ostree.linux"]')
+          inspect() {
+            sudo podman inspect "${IMAGE_NAME}:${DEFAULT_TAG}" | jq -r ".[].Config.Labels[\"$1\"]"
+          }
+          OSTREE_LINUX=$(inspect ostree.linux)
+          # Without this the rechunker stamps a bare <date> over the version the
+          # build computed, losing the tag and commit it encodes.
+          echo "version=$(inspect org.opencontainers.image.version)" >> "${GITHUB_OUTPUT}"
           {
             echo 'labels<<LABELS_EOF'
             echo "containers.bootc=1"
@@ -116,6 +121,7 @@ jobs:
           prev-ref: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
           max-layers: '127'
           labels: ${{ steps.labels.outputs.labels }}
+          version: ${{ steps.labels.outputs.version }}
 
       # The action leaves an OCI directory rather than an image in storage.
       - name: Load rechunked image
@@ -149,16 +155,25 @@ jobs:
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
-      # The rechunked image lives in root's container storage, so the push runs
-      # under sudo and needs the credentials in root's auth file rather than the
-      # runner user's -- which is what docker/login-action would have written.
-      - name: Login to GitHub Container Registry
+      # Two logins are needed, for two different users. The rechunked image
+      # lives in root's container storage so the push runs under sudo and reads
+      # root's auth file, while cosign runs as the runner user and reads
+      # ~/.docker/config.json. Dropping either one breaks that half of the flow.
+      - name: Login to GitHub Container Registry (root, for podman push)
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "${GH_TOKEN}" | sudo podman login ghcr.io \
             --username "${GITHUB_ACTOR}" --password-stdin
+
+      - name: Login to GitHub Container Registry (runner, for cosign)
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push To GHCR
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
