@@ -16,6 +16,15 @@ FROM ghcr.io/ublue-os/bluefin-dx:latest
 #
 # Universal Blue Images: https://github.com/orgs/ublue-os/packages
 
+### [IM]MUTABLE /opt
+## Fedora bootc images symlink /opt to /var/opt so it is writable, but /var is
+## machine-local and reset on deploy. cloudflare-warp ships
+## /opt/cloudflare-warp/warp-svc.service, so /opt is made a real directory here
+## to keep that file part of the image. Both /opt and /var/opt are empty in the
+## base, so nothing is lost by replacing the symlink.
+
+RUN rm /opt && mkdir /opt
+
 ### MODIFICATIONS
 ## make modifications desired in your image and install packages by modifying the build.sh script
 ## the following RUN directive does all the things required to run "build.sh" as recommended.

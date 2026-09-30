@@ -17,13 +17,21 @@ Everything in `bluefin-dx:latest`, plus:
 | `google-cloud-cli`, `google-cloud-cli-gke-gcloud-auth-plugin`, `google-cloud-cli-package-go-module` | [Google Cloud SDK](https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-x86_64) |
 | `ghostty` | COPR [`scottames/ghostty`](https://copr.fedorainfracloud.org/coprs/scottames/ghostty/) |
 | `dms`, and the `quickshell` it pulls in | COPR [`avengemedia/dms`](https://copr.fedorainfracloud.org/coprs/avengemedia/dms/) + [`avengemedia/danklinux`](https://copr.fedorainfracloud.org/coprs/avengemedia/danklinux/) |
+| `cloudflare-warp` | [Cloudflare](https://pkg.cloudflareclient.com/) |
 
 Package selection lives in [`build_files/build.sh`](build_files/build.sh); the base image
 lives in the [`Containerfile`](Containerfile).
 
 The COPRs are disabled again after installation so they do not ship enabled in the final
-image. The Google Cloud SDK repo is shipped enabled, via
+image. The Google Cloud SDK and Cloudflare repos are shipped enabled, via
 [`system_files/etc/yum.repos.d/`](system_files/etc/yum.repos.d/).
+
+`warp-svc` is enabled but idle until the client is registered:
+
+```sh
+warp-cli registration new
+warp-cli connect
+```
 
 ## Setup
 

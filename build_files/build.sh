@@ -50,6 +50,18 @@ dnf5 install -y \
 dnf5 -y copr disable avengemedia/dms
 dnf5 -y copr disable avengemedia/danklinux
 
+### Cloudflare WARP
+# Repo comes from system_files. Cloudflare publishes a Fedora build, so
+# $releasever in its baseurl resolves on its own and needs none of the hardcoding
+# the el9-only Google SDK repo does.
+#
+# The rpm's postinstall copies its unit out of /opt into /etc/systemd/system but
+# stops short of enabling it, so warp-svc is enabled explicitly. The daemon only
+# idles until `warp-cli registration new` and `warp-cli connect` are run.
+
+dnf5 install -y cloudflare-warp
+systemctl enable warp-svc.service
+
 ### Signature policy
 # The base image only trusts ghcr.io/ublue-os, so `bootc switch
 # --enforce-container-sigpolicy` onto this image would be rejected without an
