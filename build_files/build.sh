@@ -17,6 +17,26 @@ dnf5 install -y \
     tilix \
     twinkle
 
+### CLI tools
+# helm is v4 and helm3 is v3. They install /usr/bin/helm and /usr/bin/helm3
+# respectively, so the two coexist.
+
+dnf5 install -y \
+    ansible \
+    azure-cli \
+    hadolint \
+    helm \
+    helm3 \
+    k9s \
+    kubernetes-client \
+    kustomize \
+    pipx \
+    pre-commit \
+    ripgrep \
+    uv \
+    yamllint \
+    yq
+
 ### Google Cloud SDK
 # Repo comes from system_files; the key is fetched over https at build time.
 #
