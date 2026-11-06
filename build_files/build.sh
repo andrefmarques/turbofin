@@ -50,8 +50,8 @@ dnf5 install -y \
     google-cloud-cli-package-go-module
 
 ### ghostty
-# Both scottames/ghostty and avengemedia/danklinux ship a `ghostty` package.
-# Installing here, before danklinux is enabled, pins it to the scottames build
+# Both scottames/ghostty and duxlabs/dux-repo ship a `ghostty` package.
+# Installing here, before dux-repo is enabled, pins it to the scottames build
 # regardless of which COPR happens to carry the higher version.
 
 dnf5 -y copr enable scottames/ghostty
@@ -59,16 +59,20 @@ dnf5 install -y ghostty
 dnf5 -y copr disable scottames/ghostty
 
 ### DankMaterialShell
-# danklinux is declared as a runtime-dependency COPR of the dms project. dnf5 can
+# DMS 2.1 moved its packages from the retired avengemedia COPRs to Dux Labs:
+# avengemedia/dms -> duxlabs/dms, avengemedia/danklinux -> duxlabs/dux-repo.
+# https://duxlabs.dev/blog/v2-1-release#move-to-the-dux-labs-repositories
+#
+# dux-repo is declared as a runtime-dependency COPR of the dms project. dnf5 can
 # resolve that indirection on a live system, but it is not reliable inside a
 # container build, so both projects are enabled explicitly.
 
-dnf5 -y copr enable avengemedia/dms
-dnf5 -y copr enable avengemedia/danklinux
+dnf5 -y copr enable duxlabs/dms
+dnf5 -y copr enable duxlabs/dux-repo
 dnf5 install -y \
     dms
-dnf5 -y copr disable avengemedia/dms
-dnf5 -y copr disable avengemedia/danklinux
+dnf5 -y copr disable duxlabs/dms
+dnf5 -y copr disable duxlabs/dux-repo
 
 ### Cloudflare WARP
 # Repo comes from system_files. Cloudflare publishes a Fedora build, so

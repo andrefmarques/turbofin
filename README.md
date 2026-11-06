@@ -16,7 +16,7 @@ Everything in `bluefin-dx:latest`, plus:
 | `dejavu-sans-fonts`, `google-noto-sans-fonts`, `liberation-fonts` | Fedora |
 | `google-cloud-cli`, `google-cloud-cli-gke-gcloud-auth-plugin`, `google-cloud-cli-package-go-module` | [Google Cloud SDK](https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-x86_64) |
 | `ghostty` | COPR [`scottames/ghostty`](https://copr.fedorainfracloud.org/coprs/scottames/ghostty/) |
-| `dms`, and the `quickshell` it pulls in | COPR [`avengemedia/dms`](https://copr.fedorainfracloud.org/coprs/avengemedia/dms/) + [`avengemedia/danklinux`](https://copr.fedorainfracloud.org/coprs/avengemedia/danklinux/) |
+| `dms`, and the `quickshell` it pulls in | COPR [`duxlabs/dms`](https://copr.fedorainfracloud.org/coprs/duxlabs/dms/) + [`duxlabs/dux-repo`](https://copr.fedorainfracloud.org/coprs/duxlabs/dux-repo/) |
 | `cloudflare-warp` | [Cloudflare](https://pkg.cloudflareclient.com/) |
 
 Package selection lives in [`build_files/build.sh`](build_files/build.sh); the base image
