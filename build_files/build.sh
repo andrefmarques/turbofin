@@ -13,6 +13,7 @@ dnf5 install -y \
     google-noto-sans-fonts \
     liberation-fonts \
     niri \
+    noctalia \
     sassc \
     tilix \
     twinkle
@@ -73,6 +74,16 @@ dnf5 install -y \
     dms
 dnf5 -y copr disable duxlabs/dms
 dnf5 -y copr disable duxlabs/dux-repo
+
+### Umbriel
+# Only Terra packages the compositor for Fedora, as nightly snapshots. Its repo
+# file ships disabled from system_files and only lets these two packages through,
+# so every dependency (wlroots, xwayland-satellite, ...) still comes from Fedora.
+# The portal is pulled in as a dependency but listed so it stays explicit.
+
+dnf5 install -y --enablerepo=terra \
+    umbriel-nightly \
+    xdg-desktop-portal-umbriel-nightly
 
 ### Cloudflare WARP
 # Repo comes from system_files. Cloudflare publishes a Fedora build, so

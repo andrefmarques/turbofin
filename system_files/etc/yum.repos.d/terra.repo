@@ -1,0 +1,14 @@
+# Terra (Fyra Labs), the only Fedora source for Umbriel. Adapted from the [terra]
+# section of terra-release: the key is fetched over https because terra-release
+# itself is not installed, and includepkgs keeps Terra from replacing any Fedora
+# package. Disabled here; build.sh enables it for the one install that needs it.
+[terra]
+name=Terra $releasever
+metalink=https://tetsudou.fyralabs.com/metalink?repo=terra$releasever&arch=$basearch
+metadata_expire=6h
+type=rpm
+gpgcheck=1
+gpgkey=https://repos.fyralabs.com/terra$releasever/key.asc
+repo_gpgcheck=0
+enabled=0
+includepkgs=umbriel-nightly,xdg-desktop-portal-umbriel-nightly
